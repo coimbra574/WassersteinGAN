@@ -256,8 +256,8 @@ if __name__=="__main__":
                 % (epoch, opt.niter, i, len(dataloader), gen_iterations,
                 errD.data[0], errG.data[0], errD_real.data[0], errD_fake.data[0]))
         
-            wandb.log({"Loss_D": errD.data[0]}, {"Loss_G": errG.data[0]}, {"Loss_D_real": errD_real.data[0]},
-                    {"Loss_D_fake": errD_fake.data[0]}, {"Global_step": gen_iterations}, {"Epoch": epoch})
+            wandb.log({"Loss_D": errD.data[0], "Loss_G": errG.data[0], "Loss_D_real": errD_real.data[0],
+                    "Loss_D_fake": errD_fake.data[0], "Global_step": gen_iterations, "Epoch": epoch})
 
             if gen_iterations % 500 == 0:
                 real_cpu = real_cpu.mul(0.5).add(0.5)
