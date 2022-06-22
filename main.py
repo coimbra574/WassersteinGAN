@@ -13,6 +13,7 @@ import torchvision.utils as vutils
 from torch.autograd import Variable
 import os
 import json
+import wandb
 
 import models.dcgan as dcgan
 import models.mlp as mlp
@@ -46,7 +47,8 @@ if __name__=="__main__":
     parser.add_argument('--n_extra_layers', type=int, default=0, help='Number of extra layers on gen and disc')
     parser.add_argument('--experiment', default=None, help='Where to store samples and models')
     parser.add_argument('--adam', action='store_true', help='Whether to use adam (default is rmsprop)')
-    parser.add_argument('--invert_p', type=bool,default=None, help='Create modified dataset with inverted mnist background')
+    parser.add_argument('--test_name', type=str, default=None, help='Name of wandb test') 
+    parser.add_argument('--invert_p', type=float,default=None, help='Create modified dataset with inverted mnist background')
     opt = parser.parse_args()
     print(opt)
 
@@ -60,6 +62,16 @@ if __name__=="__main__":
     torch.manual_seed(opt.manualSeed)
 
     cudnn.benchmark = True
+
+    wandb.init(
+        project=f"WGAN-{opt.dataset}",
+        name=opt.test_name,
+        tags=["WGAN", opt.dataset],
+        config=vars(opt),
+        group="experiment_1",
+         # save_code=True,
+        )
+
 
     if torch.cuda.is_available() and not opt.cuda:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
@@ -243,13 +255,23 @@ if __name__=="__main__":
             print('[%d/%d][%d/%d][%d] Loss_D: %f Loss_G: %f Loss_D_real: %f Loss_D_fake %f'
                 % (epoch, opt.niter, i, len(dataloader), gen_iterations,
                 errD.data[0], errG.data[0], errD_real.data[0], errD_fake.data[0]))
+        
+            wandb.log({"Loss_D": errD.data[0]}, {"Loss_G": errG.data[0]}, {"Loss_D_real": errD_real.data[0]},
+                    {"Loss_D_fake": errD_fake.data[0]}, {"Global_step": gen_iterations}, {"Epoch": epoch})
+
             if gen_iterations % 500 == 0:
                 real_cpu = real_cpu.mul(0.5).add(0.5)
                 vutils.save_image(real_cpu, '{0}/real_samples.png'.format(opt.experiment))
                 fake = netG(Variable(fixed_noise, volatile=True))
                 fake.data = fake.data.mul(0.5).add(0.5)
                 vutils.save_image(fake.data, '{0}/fake_samples_{1}.png'.format(opt.experiment, gen_iterations))
+                wandb.log({"Model_real_sample": wandb.Image(real.cpu)})
+                wandb.log({"Model_fake_sample": wandb.Image(fake.data)})
+
 
         # do checkpointing
         torch.save(netG.state_dict(), '{0}/netG_epoch_{1}.pth'.format(opt.experiment, epoch))
         torch.save(netD.state_dict(), '{0}/netD_epoch_{1}.pth'.format(opt.experiment, epoch))
+
+        wandb.save('{0}/netG_epoch_{1}.pth'.format(opt.experiment, epoch))
+        wandb.save('{0}/netD_epoch_{1}.pth'.format(opt.experiment, epoch))
