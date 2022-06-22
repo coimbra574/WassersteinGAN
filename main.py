@@ -265,7 +265,7 @@ if __name__=="__main__":
                 fake = netG(Variable(fixed_noise, volatile=True))
                 fake.data = fake.data.mul(0.5).add(0.5)
                 vutils.save_image(fake.data, '{0}/fake_samples_{1}.png'.format(opt.experiment, gen_iterations))
-                wandb.log({"Model_real_sample": wandb.Image(real.cpu)})
+                wandb.log({"Model_real_sample": wandb.Image(real_cpu)})
                 wandb.log({"Model_fake_sample": wandb.Image(fake.data)})
 
 
