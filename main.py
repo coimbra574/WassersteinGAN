@@ -24,7 +24,7 @@ if __name__=="__main__":
     parser.add_argument('--dataroot', required=True, help='path to dataset')
     parser.add_argument('--workers', type=int, help='number of data loading workers', default=2)
     parser.add_argument('--batchSize', type=int, default=64, help='input batch size')
-    parser.add_argument('--imageSize', type=int, default=64, help='the height / width of the input image to network')
+    parser.add_argument('--imageSize', type=int, default=32, help='the height / width of the input image to network')
     parser.add_argument('--nc', type=int, default=3, help='input image channels')
     parser.add_argument('--nz', type=int, default=100, help='size of the latent z vector')
     parser.add_argument('--ngf', type=int, default=64)
@@ -46,6 +46,7 @@ if __name__=="__main__":
     parser.add_argument('--n_extra_layers', type=int, default=0, help='Number of extra layers on gen and disc')
     parser.add_argument('--experiment', default=None, help='Where to store samples and models')
     parser.add_argument('--adam', action='store_true', help='Whether to use adam (default is rmsprop)')
+    parser.add_argument('--invert_p', type=bool,default=None, help='Create modified dataset with inverted mnist background')
     opt = parser.parse_args()
     print(opt)
 
@@ -67,7 +68,7 @@ if __name__=="__main__":
         # folder dataset
         dataset = dset.ImageFolder(root=opt.dataroot,
                                 transform=transforms.Compose([
-                                    transforms.Scale(opt.imageSize),
+                                    transforms.Resize(opt.imageSize),
                                     transforms.CenterCrop(opt.imageSize),
                                     transforms.ToTensor(),
                                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
@@ -75,7 +76,7 @@ if __name__=="__main__":
     elif opt.dataset == 'lsun':
         dataset = dset.LSUN(db_path=opt.dataroot, classes=['bedroom_train'],
                             transform=transforms.Compose([
-                                transforms.Scale(opt.imageSize),
+                                transforms.Resize(opt.imageSize),
                                 transforms.CenterCrop(opt.imageSize),
                                 transforms.ToTensor(),
                                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
@@ -83,11 +84,23 @@ if __name__=="__main__":
     elif opt.dataset == 'cifar10':
         dataset = dset.CIFAR10(root=opt.dataroot, download=True,
                             transform=transforms.Compose([
-                                transforms.Scale(opt.imageSize),
+                                transforms.Resize(opt.imageSize),
                                 transforms.ToTensor(),
                                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                             ])
         )
+
+    elif opt.dataset == 'mnist':
+        transform = transforms.Compose([transforms.Resize(opt.imageSize)])
+        if opt.invert_p is not None:
+            transform.transforms.append(transforms.RandomInvert(p=opt.invert_p))
+        transform.transforms.extend([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,), (0.5,))])
+
+        dataset = dset.MNIST(root=opt.dataroot, train=True, transform=transform, download=True)
+                         
+
     assert dataset
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize,
                                             shuffle=True, num_workers=int(opt.workers))
@@ -203,7 +216,7 @@ if __name__=="__main__":
 
                 # train with fake
                 noise.resize_(opt.batchSize, nz, 1, 1).normal_(0, 1)
-                noisev = Variable(noise, volatile = True) # totally freeze netG
+                noisev = Variable(noise, volatile  = True) # totally freeze netG
                 fake = Variable(netG(noisev).data)
                 inputv = fake
                 errD_fake = netD(inputv)
