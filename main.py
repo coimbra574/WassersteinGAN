@@ -47,7 +47,8 @@ if __name__=="__main__":
     parser.add_argument('--n_extra_layers', type=int, default=0, help='Number of extra layers on gen and disc')
     parser.add_argument('--experiment', default=None, help='Where to store samples and models')
     parser.add_argument('--adam', action='store_true', help='Whether to use adam (default is rmsprop)')
-    parser.add_argument('--test_name', type=str, default=None, help='Name of wandb test') 
+    parser.add_argument('--test_name', type=str, default=None, help='Name of wandb test')
+    parser.add_argument('--load_checkpoint', type=bool, default=None, help='True if load from checkpoint')
     parser.add_argument('--invert_p', type=float,default=None, help='Create modified dataset with inverted mnist background')
     opt = parser.parse_args()
     print(opt)
@@ -186,8 +187,24 @@ if __name__=="__main__":
         optimizerD = optim.RMSprop(netD.parameters(), lr = opt.lrD)
         optimizerG = optim.RMSprop(netG.parameters(), lr = opt.lrG)
 
+
+
     gen_iterations = 0
-    for epoch in range(opt.niter):
+    epoch = 0
+
+
+    if opt.load_checkpoint:
+        checkpoint = torch.load('{0}/model.pth'.format(opt.experiment))
+        netG.load_state_dict(checkpoint['netG_state_dict'])   
+        netD.load_state_dict(checkpoint['netD_state_dict'])   
+        optimizerD.load_state_dict(checkpoint['optimizerD_state_dict'])
+        optimizerG.load_state_dict(checkpoint['optimizerG_state_dict'])
+        gen_iterations = checkpoint['gen_iterations']
+        epoch  = checkpoint['n_epochs'] + 1 
+
+    
+    while epoch is not opt.niter:
+    #for epoch in range(opt.niter):
         data_iter = iter(dataloader)
         i = 0
         while i < len(dataloader):
@@ -259,19 +276,28 @@ if __name__=="__main__":
             wandb.log({"Loss_D": errD.data[0], "Loss_G": errG.data[0], "Loss_D_real": errD_real.data[0],
                     "Loss_D_fake": errD_fake.data[0], "Global_step": gen_iterations, "Epoch": epoch})
 
-            if gen_iterations % 500 == 0:
+            if gen_iterations % 1 == 0:
                 real_cpu = real_cpu.mul(0.5).add(0.5)
                 vutils.save_image(real_cpu, '{0}/real_samples.png'.format(opt.experiment))
                 fake = netG(Variable(fixed_noise, volatile=True))
                 fake.data = fake.data.mul(0.5).add(0.5)
                 vutils.save_image(fake.data, '{0}/fake_samples_{1}.png'.format(opt.experiment, gen_iterations))
-                wandb.log({"Model_real_sample": wandb.Image(real_cpu)})
-                wandb.log({"Model_fake_sample": wandb.Image(fake.data)})
+                wandb.log({"Model_real_sample": wandb.Image(real_cpu), "Model_fake_sample": wandb.Image(fake.data)})
 
+                # do checkpointing
+               # torch.save(netG.state_dict(), '{0}/netG.pth'.format(opt.experiment))
+               # torch.save(netD.state_dict(), '{0}/netD.pth'.format(opt.experiment))
 
-        # do checkpointing
-        torch.save(netG.state_dict(), '{0}/netG_epoch_{1}.pth'.format(opt.experiment, epoch))
-        torch.save(netD.state_dict(), '{0}/netD_epoch_{1}.pth'.format(opt.experiment, epoch))
+               # wandb.save('{0}/netG.pth'.format(opt.experiment))
+               # wandb.save('{0}/netD.pth'.format(opt.experiment))
+                
+                torch.save({
+                    'gen_iterations': gen_iterations, 
+                    'n_epochs': epoch,  
+                    'netG_state_dict': netG.state_dict(),
+                    'netD_state_dict': netD.state_dict(),
+                    'optimizerG_state_dict': optimizerG.state_dict(),
+                    'optimizerD_state_dict': optimizerD.state_dict(),
+                     },  '{0}/model.pth'.format(opt.experiment))
 
-        wandb.save('{0}/netG_epoch_{1}.pth'.format(opt.experiment, epoch))
-        wandb.save('{0}/netD_epoch_{1}.pth'.format(opt.experiment, epoch))
+        epoch = epoch + 1
