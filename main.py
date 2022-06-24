@@ -203,7 +203,7 @@ if __name__=="__main__":
         epoch  = checkpoint['n_epochs'] + 1 
 
     
-    while epoch is not opt.niter:
+    while epoch <= opt.niter:
     #for epoch in range(opt.niter):
         data_iter = iter(dataloader)
         i = 0
