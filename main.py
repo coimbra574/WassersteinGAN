@@ -189,8 +189,8 @@ if __name__=="__main__":
 
 
 
-    gen_iterations = 0
-    epoch = 0
+    gen_iterations = 1
+    epoch = 1
 
 
     if opt.load_checkpoint:
