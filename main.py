@@ -48,7 +48,7 @@ if __name__=="__main__":
     parser.add_argument('--experiment', default=None, help='Where to store samples and models')
     parser.add_argument('--adam', action='store_true', help='Whether to use adam (default is rmsprop)')
     parser.add_argument('--test_name', type=str, default=None, help='Name of wandb test')
-    parser.add_argument('--load_checkpoint', type=bool, default=None, help='True if load from checkpoint')
+    parser.add_argument('--load_checkpoint', type=bool, default=False, help='True if load from checkpoint')
     parser.add_argument('--invert_p', type=float,default=None, help='Create modified dataset with inverted mnist background')
     opt = parser.parse_args()
     print(opt)
@@ -69,7 +69,7 @@ if __name__=="__main__":
         name=opt.test_name,
         tags=["WGAN", opt.dataset],
         config=vars(opt),
-        group="experiment_1",
+        group="MNIST",
          # save_code=True,
         )
 
@@ -269,28 +269,22 @@ if __name__=="__main__":
             optimizerG.step()
             gen_iterations += 1
 
+
             print('[%d/%d][%d/%d][%d] Loss_D: %f Loss_G: %f Loss_D_real: %f Loss_D_fake %f'
                 % (epoch, opt.niter, i, len(dataloader), gen_iterations,
                 errD.data[0], errG.data[0], errD_real.data[0], errD_fake.data[0]))
-        
+
             wandb.log({"Loss_D": errD.data[0], "Loss_G": errG.data[0], "Loss_D_real": errD_real.data[0],
                     "Loss_D_fake": errD_fake.data[0], "Global_step": gen_iterations, "Epoch": epoch})
 
-            if gen_iterations % 1 == 0:
+            if gen_iterations % 50 == 0:
                 real_cpu = real_cpu.mul(0.5).add(0.5)
                 vutils.save_image(real_cpu, '{0}/real_samples.png'.format(opt.experiment))
                 fake = netG(Variable(fixed_noise, volatile=True))
                 fake.data = fake.data.mul(0.5).add(0.5)
                 vutils.save_image(fake.data, '{0}/fake_samples_{1}.png'.format(opt.experiment, gen_iterations))
                 wandb.log({"Model_real_sample": wandb.Image(real_cpu), "Model_fake_sample": wandb.Image(fake.data)})
-
-                # do checkpointing
-               # torch.save(netG.state_dict(), '{0}/netG.pth'.format(opt.experiment))
-               # torch.save(netD.state_dict(), '{0}/netD.pth'.format(opt.experiment))
-
-               # wandb.save('{0}/netG.pth'.format(opt.experiment))
-               # wandb.save('{0}/netD.pth'.format(opt.experiment))
-                
+ 
                 torch.save({
                     'gen_iterations': gen_iterations, 
                     'n_epochs': epoch,  
@@ -299,5 +293,7 @@ if __name__=="__main__":
                     'optimizerG_state_dict': optimizerG.state_dict(),
                     'optimizerD_state_dict': optimizerD.state_dict(),
                      },  '{0}/model.pth'.format(opt.experiment))
+
+                wandb.save('{0}/model.pth'.format(opt.experiment))
 
         epoch = epoch + 1
