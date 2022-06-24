@@ -61,7 +61,6 @@ if __name__=="__main__":
     opt.manualSeed = 1024
     print("Seed: ", opt.manualSeed)  
     random.seed(opt.manualSeed )
-    np.random.seed(opt.manualSeed)
     torch.manual_seed(opt.manualSeed)
     torch.cuda.manual_seed(opt.manualSeed)
     torch.cuda.manual_seed_all(opt.manualSeed)
