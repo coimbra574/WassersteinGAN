@@ -57,10 +57,14 @@ if __name__=="__main__":
         opt.experiment = 'samples'
     os.system('mkdir {0}'.format(opt.experiment))
 
-    opt.manualSeed = random.randint(1, 10000) # fix seed
-    print("Random Seed: ", opt.manualSeed)
-    random.seed(opt.manualSeed)
+    # Set seed
+    opt.manualSeed = 1024
+    print("Seed: ", opt.manualSeed)  
+    random.seed(opt.manualSeed )
     torch.manual_seed(opt.manualSeed)
+    torch.cuda.manual_seed(opt.manualSeed)
+    torch.cuda.manual_seed_all(opt.manualSeed)
+    torch.backends.cudnn.deterministic = True
 
     cudnn.benchmark = True
 
@@ -189,8 +193,8 @@ if __name__=="__main__":
 
 
 
-    gen_iterations = 0
-    epoch = 0
+    gen_iterations = 1
+    epoch = 1
 
 
     if opt.load_checkpoint is not None:
@@ -203,7 +207,7 @@ if __name__=="__main__":
         epoch  = checkpoint['n_epochs'] + 1 
 
     
-    while epoch is not opt.niter:
+    while epoch <= opt.niter:
     #for epoch in range(opt.niter):
         data_iter = iter(dataloader)
         i = 0
