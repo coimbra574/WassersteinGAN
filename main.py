@@ -48,7 +48,7 @@ if __name__=="__main__":
     parser.add_argument('--experiment', default=None, help='Where to store samples and models')
     parser.add_argument('--adam', action='store_true', help='Whether to use adam (default is rmsprop)')
     parser.add_argument('--test_name', type=str, default=None, help='Name of wandb test')
-    parser.add_argument('--load_checkpoint', type=bool, default=False, help='True if load from checkpoint')
+    parser.add_argument('--load_checkpoint', type=str, default=None, help='Number of gen iterations to load from. Ex: 500')
     parser.add_argument('--invert_p', type=float,default=None, help='Create modified dataset with inverted mnist background')
     opt = parser.parse_args()
     print(opt)
@@ -193,8 +193,8 @@ if __name__=="__main__":
     epoch = 0
 
 
-    if opt.load_checkpoint:
-        checkpoint = torch.load('{0}/model.pth'.format(opt.experiment))
+    if opt.load_checkpoint is not None:
+        checkpoint = torch.load('{0}/model_{1}.pth'.format(opt.experiment, opt.load_checkpoint))
         netG.load_state_dict(checkpoint['netG_state_dict'])   
         netD.load_state_dict(checkpoint['netD_state_dict'])   
         optimizerD.load_state_dict(checkpoint['optimizerD_state_dict'])
@@ -277,7 +277,7 @@ if __name__=="__main__":
             wandb.log({"Loss_D": errD.data[0], "Loss_G": errG.data[0], "Loss_D_real": errD_real.data[0],
                     "Loss_D_fake": errD_fake.data[0], "Global_step": gen_iterations, "Epoch": epoch})
 
-            if gen_iterations % 50 == 0:
+            if gen_iterations % 1 == 0:
                 real_cpu = real_cpu.mul(0.5).add(0.5)
                 vutils.save_image(real_cpu, '{0}/real_samples.png'.format(opt.experiment))
                 fake = netG(Variable(fixed_noise, volatile=True))
@@ -294,6 +294,6 @@ if __name__=="__main__":
                     'optimizerD_state_dict': optimizerD.state_dict(),
                      },  '{0}/model.pth'.format(opt.experiment))
 
-                wandb.save('{0}/model.pth'.format(opt.experiment))
+                wandb.save('{0}/model_{1}.pth'.format(opt.experiment, gen_iterations))
 
         epoch = epoch + 1
