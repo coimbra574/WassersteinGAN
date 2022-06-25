@@ -193,7 +193,7 @@ if __name__=="__main__":
 
 
 
-    gen_iterations = 1
+    gen_iterations = 0
     epoch = 1
 
 
@@ -281,7 +281,7 @@ if __name__=="__main__":
             wandb.log({"Loss_D": errD.data[0], "Loss_G": errG.data[0], "Loss_D_real": errD_real.data[0],
                     "Loss_D_fake": errD_fake.data[0], "Global_step": gen_iterations, "Epoch": epoch})
 
-            if gen_iterations % 1 == 0:
+            if gen_iterations % 200 == 0:
                 real_cpu = real_cpu.mul(0.5).add(0.5)
                 vutils.save_image(real_cpu, '{0}/real_samples.png'.format(opt.experiment))
                 fake = netG(Variable(fixed_noise, volatile=True))
