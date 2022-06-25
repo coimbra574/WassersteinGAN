@@ -292,7 +292,7 @@ if __name__=="__main__":
                     'netD_state_dict': netD.state_dict(),
                     'optimizerG_state_dict': optimizerG.state_dict(),
                     'optimizerD_state_dict': optimizerD.state_dict(),
-                     },  '{0}/model.pth'.format(opt.experiment))
+                     },  '{0}/model_{1}.pth'.format(opt.experiment, gen_iterations))
 
                 wandb.save('{0}/model_{1}.pth'.format(opt.experiment, gen_iterations))
 
