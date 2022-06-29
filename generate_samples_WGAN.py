@@ -17,7 +17,8 @@ import json
 import models.dcgan as dcgan
 import models.mlp as mlp
 
-if __name__=="__main__":
+
+def generate_samples(args):
 
     set_seed = 42
     random.seed(set_seed)
@@ -25,15 +26,7 @@ if __name__=="__main__":
     torch.cuda.manual_seed(set_seed)
     torch.cuda.manual_seed_all(set_seed)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', required=True, type=str, help='path to generator config .json file')
-    parser.add_argument('-w', '--weights', required=True, type=str, help='path to generator weights .pth file')
-    parser.add_argument('-o', '--output_dir', required=True, type=str, help="path to to output directory")
-    parser.add_argument('-n', '--nimages', required=True, type=int, help="number of images to generate", default=1)
-    parser.add_argument('--cuda', action='store_true', help='enables cuda')
-    opt = parser.parse_args()
-
-    with open(opt.config, 'r') as gencfg:
+    with open(args.params_path, 'r') as gencfg:
         generator_config = json.loads(gencfg.read())
     
     imageSize = generator_config["imageSize"]
@@ -53,17 +46,31 @@ if __name__=="__main__":
         netG = dcgan.DCGAN_G(imageSize, nz, nc, ngf, ngpu, n_extra_layers)
 
     # load weights
-    netG.load_state_dict(torch.load(opt.weights)['netG_state_dict'])
+    netG.load_state_dict(torch.load(args.weights_path)['netG_state_dict'])
 
     # initialize noise
-    fixed_noise = torch.FloatTensor(opt.nimages, nz, 1, 1).normal_(0, 1)
+    fixed_noise = torch.FloatTensor(args.num_samples, nz, 1, 1).normal_(0, 1)
 
-    if opt.cuda:
+    if args.cuda:
         netG.cuda()
         fixed_noise = fixed_noise.cuda()
 
     fake = netG(fixed_noise)
     fake.data = fake.data.mul(0.5).add(0.5)
 
-    for i in range(opt.nimages):
-        vutils.save_image(fake.data[i, ...].reshape((1, nc, imageSize, imageSize)), os.path.join(opt.output_dir, "generated_%02d.png"%i))
+    for i in range(args.num_samples):
+        vutils.save_image(fake.data[i, ...].reshape((1, nc, imageSize, imageSize)), os.path.join(args.output_dir, "generated_%02d.png"%i))
+
+
+
+if __name__=="__main__":
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--params_path', required=True, type=str, help='path to generator config .json file')
+    parser.add_argument('-w', '--weights_path', required=True, type=str, help='path to generator weights .pth file')
+    parser.add_argument('-o', '--output_dir', required=True, type=str, help="path to to output directory")
+    parser.add_argument('-n', '--num_samples', type=int, help="number of images to generate", default=1)
+    parser.add_argument('--cuda', action='store_true', help='enables cuda')
+    args = parser.parse_args()
+
+    generate_samples(args)
