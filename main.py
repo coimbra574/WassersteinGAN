@@ -36,8 +36,6 @@ if __name__=="__main__":
     parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
     parser.add_argument('--cuda'  , action='store_true', help='enables cuda')
     parser.add_argument('--ngpu'  , type=int, default=1, help='number of GPUs to use')
-    parser.add_argument('--netG', default='', help="path to netG (to continue training)")
-    parser.add_argument('--netD', default='', help="path to netD (to continue training)")
     parser.add_argument('--clamp_lower', type=float, default=-0.01)
     parser.add_argument('--clamp_upper', type=float, default=0.01)
     parser.add_argument('--Diters', type=int, default=5, help='number of D iters per each G iter')
@@ -53,9 +51,11 @@ if __name__=="__main__":
     opt = parser.parse_args()
     print(opt)
 
+
     if opt.experiment is None:
         opt.experiment = 'samples'
     os.system('mkdir {0}'.format(opt.experiment))
+
 
     # Set seed
     opt.manualSeed = 1024
@@ -66,8 +66,12 @@ if __name__=="__main__":
     torch.cuda.manual_seed_all(opt.manualSeed)
     torch.backends.cudnn.deterministic = True
 
+
+    # Find best algorithm to use in hardware level
     cudnn.benchmark = True
 
+
+    # Initialization of wandb parameters
     wandb.init(
         project=f"WGAN-{opt.dataset}",
         name=opt.test_name,
@@ -80,6 +84,10 @@ if __name__=="__main__":
 
     if torch.cuda.is_available() and not opt.cuda:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
+
+
+
+    ##### Choose dataset #####
 
     if opt.dataset in ['imagenet', 'folder', 'lfw']:
         # folder dataset
@@ -122,6 +130,10 @@ if __name__=="__main__":
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize,
                                             shuffle=True, num_workers=int(opt.workers))
 
+
+    ####################
+
+
     ngpu = int(opt.ngpu)
     nz = int(opt.nz)
     ngf = int(opt.ngf)
@@ -129,10 +141,14 @@ if __name__=="__main__":
     nc = int(opt.nc)
     n_extra_layers = int(opt.n_extra_layers)
 
+
     # write out generator config to generate images together wth training checkpoints (.pth)
     generator_config = {"imageSize": opt.imageSize, "nz": nz, "nc": nc, "ngf": ngf, "ngpu": ngpu, "n_extra_layers": n_extra_layers, "noBN": opt.noBN, "mlp_G": opt.mlp_G}
     with open(os.path.join(opt.experiment, "generator_config.json"), 'w') as gcfg:
         gcfg.write(json.dumps(generator_config)+"\n")
+        wandb.save("{0}/generator_config.json".format(opt.experiment))
+
+
 
     # custom weights initialization called on netG and netD
     def weights_init(m):
@@ -143,6 +159,8 @@ if __name__=="__main__":
             m.weight.data.normal_(1.0, 0.02)
             m.bias.data.fill_(0)
 
+
+    # Use batchnorm or not
     if opt.noBN:
         netG = dcgan.DCGAN_G_nobn(opt.imageSize, nz, nc, ngf, ngpu, n_extra_layers)
     elif opt.mlp_G:
@@ -150,25 +168,16 @@ if __name__=="__main__":
     else:
         netG = dcgan.DCGAN_G(opt.imageSize, nz, nc, ngf, ngpu, n_extra_layers)
 
-    # write out generator config to generate images together wth training checkpoints (.pth)
-    generator_config = {"imageSize": opt.imageSize, "nz": nz, "nc": nc, "ngf": ngf, "ngpu": ngpu, "n_extra_layers": n_extra_layers, "noBN": opt.noBN, "mlp_G": opt.mlp_G}
-    with open(os.path.join(opt.experiment, "generator_config.json"), 'w') as gcfg:
-        gcfg.write(json.dumps(generator_config)+"\n")
+
 
     netG.apply(weights_init)
-    if opt.netG != '': # load checkpoint if needed
-        netG.load_state_dict(torch.load(opt.netG))
-    print(netG)
-
     if opt.mlp_D:
         netD = mlp.MLP_D(opt.imageSize, nz, nc, ndf, ngpu)
     else:
         netD = dcgan.DCGAN_D(opt.imageSize, nz, nc, ndf, ngpu, n_extra_layers)
         netD.apply(weights_init)
 
-    if opt.netD != '':
-        netD.load_state_dict(torch.load(opt.netD))
-    print(netD)
+
 
     input = torch.FloatTensor(opt.batchSize, 3, opt.imageSize, opt.imageSize)
     noise = torch.FloatTensor(opt.batchSize, nz, 1, 1)
@@ -176,12 +185,16 @@ if __name__=="__main__":
     one = torch.FloatTensor([1])
     mone = one * -1
 
+
+
     if opt.cuda:
         netD.cuda()
         netG.cuda()
         input = input.cuda()
         one, mone = one.cuda(), mone.cuda()
         noise, fixed_noise = noise.cuda(), fixed_noise.cuda()
+
+
 
     # setup optimizer
     if opt.adam:
@@ -195,7 +208,6 @@ if __name__=="__main__":
 
     gen_iterations = 0
     epoch = 1
-
 
     if opt.load_checkpoint is not None:
         checkpoint = torch.load('{0}/model_{1}.pth'.format(opt.experiment, opt.load_checkpoint))
