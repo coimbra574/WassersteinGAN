@@ -47,7 +47,7 @@ if __name__=="__main__":
     parser.add_argument('--adam', action='store_true', help='Whether to use adam (default is rmsprop)')
     parser.add_argument('--test_name', type=str, default=None, help='Name of wandb test')
     parser.add_argument('--load_checkpoint', type=str, default=None, help='Number of gen iterations to load from. Ex: 500')
-    parser.add_argument('--invert_p', type=float,default=None, help='Create modified dataset with inverted mnist background')
+    parser.add_argument('--invert_p', type=float,default=1, help='Create modified dataset with inverted mnist background')
     opt = parser.parse_args()
     print(opt)
 
